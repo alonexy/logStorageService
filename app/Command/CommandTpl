@@ -1,0 +1,15 @@
+<?php
+namespace App\Command;
+
+class CommandClass extends BaseCommand
+{
+
+    public $commandName = 'NAME';
+    public $commandDesc = 'DESC';
+
+    public function handle()
+    {
+
+    }
+
+}
