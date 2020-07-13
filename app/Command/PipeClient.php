@@ -25,7 +25,7 @@ class PipeClient extends BaseCommand
 
     public function handle()
     {
-        $this->logStore("TsetService","test",["user"=>1]);
+        $this->logStore("TsetService","test",["user"=>1,time()]);
     }
 
     public function logStore($serviceName, $Message, array $Contexts, $LogLevel = Logger::INFO, $Timeout = 50)
