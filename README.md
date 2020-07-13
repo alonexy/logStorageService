@@ -1,62 +1,25 @@
-## CLI-Command
+## logStorageService
 
-## php bin/console list
+- 分布式日志收集demo
+- PipeStreamHandler 基于 Monolog 格式
 
-- 和laravel 使用方式保持一致
 
+###  操作命令
 ```
-Console Tool
-
-Usage:
-  command [options] [arguments]
-
-Options:
-  -h, --help            Display this help message
-  -q, --quiet           Do not output any message
-  -V, --version         Display this application version
-      --ansi            Force ANSI output
-      --no-ansi         Disable ANSI output
-  -n, --no-interaction  Do not ask any interactive question
-  -v|vv|vvv, --verbose  Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
-
-Available commands:
-  help      Displays help for a command
-  list      Lists commands
- test
-  test:one  Test DEsc
-
-```
-### php bin/console test:one -h
-```
-Usage:
-  test:one [options] [--] [<user>]
-
-Arguments:
-  user                  用户ID [default: "1"]
-
-Options:
-      --param2          参数2
-  -h, --help            Display this help message
-  -q, --quiet           Do not output any message
-  -V, --version         Display this application version
-      --ansi            Force ANSI output
-      --no-ansi         Disable ANSI output
-  -n, --no-interaction  Do not ask any interactive question
-  -v|vv|vvv, --verbose  Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
-
-Help:
-  Test DEsc
+php bin/console tcp:server  #  打开tcpServer
+php bin/console pipe:server #  打开 pipeServer 和TcpClient
+php bin/console pipe:client #  输出日志
 ```
 
-### 解释
+- 文件解释
 ```
-public $commandName = 'test:one {user=1 : 用户ID} {--param2 : 参数2}';
+/tmp/phplog_pipe #日志管道
+/tmp/phplog_active_time # 管道激活时间
+/tmp/php_local_logs/*.log  #放到管道中的数据如果管道未打开就放到这里
 
-command:xxx {参数=默认值 : 解释} {--选项 : 解释}
-
-# 获取方式
- $user = $this->argument('user');
- $param2 = $this->option('param2');
 ```
+
+
+
 
 

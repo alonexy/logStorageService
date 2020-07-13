@@ -14,7 +14,7 @@ use Swoole\Timer;
 class TcpServer extends BaseCommand
 {
 
-    public $commandName = 'tcp:servevr';
+    public $commandName = 'tcp:server';
     public $commandDesc = 'tcp log Server ';
 
 
