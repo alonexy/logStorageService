@@ -2,6 +2,8 @@
 namespace App\Command;
 
 use Co\Channel;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 use Swoole\Timer;
 use Swoole\Coroutine as Co;
 
@@ -27,7 +29,7 @@ class PipeServer extends BaseCommand
         }
         #连接TCPServer
         Co\run(
-            function () use($pipe,$pipeActive){
+            function () use ($pipe, $pipeActive) {
                 Timer::tick(
                     1500, function () use ($pipeActive) {
                     //定时刷新激活时间
@@ -36,43 +38,94 @@ class PipeServer extends BaseCommand
 
                 $logServerTcpHost    = '127.0.0.1';
                 $logServerTcpPort    = 9880;
-                $logServerTcpTimeout = 50;
+                $logServerTcpTimeout = 10;
                 $wg                  = new \Swoole\Coroutine\WaitGroup();
-                $wg->add();
-                $wg->add();
-                $chan = new Channel(100);
-                Co::create(
-                    function () use ($chan, &$wg, $logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
-                        defer(
-                            function () use (&$wg) {
-                                $wg->done();
-                            });
-                        $client = new Co\Client(SWOOLE_SOCK_TCP);
 
-                        if (!$client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)) {
-                            echo "connect failed. Error: {$client->errCode}".PHP_EOL;
+                $chan   = new Channel(100);
+
+                $tcpIsEnable = false;
+                $retryTickId = 0;
+                $retryTime = 5000;
+
+                $client = new Co\Client(SWOOLE_SOCK_TCP);
+                if (!$client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)) {
+                    echo "connect failed. Error: {$client->errCode}" . PHP_EOL;
+                    if(empty($retryTickId)){
+                        $retryTickId = Timer::tick($retryTime,function() use(&$client,&$tcpIsEnable,$logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout){
+                            $client = new Co\Client(SWOOLE_SOCK_TCP);
+                            if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)){
+                                $tcpIsEnable = true;
+                            }
+                        });
+                    }
+                }
+                else {
+                    $tcpIsEnable = true;
+                    //打开链接成功 开启心跳
+                    Timer::tick(
+                        7000, function () use (&$client,&$tcpIsEnable) {
+                        if($tcpIsEnable){
+                            $heartData = "heart";
+                            $type      = pack('N', 1002);
+                            $length    = pack('N', strlen($heartData));
+                            //length+type+body
+                            $packge = $length . $type . $heartData;
+                            $client->send($packge);
                         }
-                        else {
+                    });
+                }
+                for ($i = 0; $i < 10; $i++) {
+                    $wg->add();
+                    Co::create(
+                        function () use ($chan, &$wg, &$client,&$tcpIsEnable,&$retryTickId,$retryTime,$logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
+                            defer(
+                                function () use (&$wg) {
+                                    $wg->done();
+                                });
                             //TODO Logic
                             while (true) {
                                 $data = $chan->pop();
                                 if (empty($data)) {
                                     Co::sleep(1);
                                 }
-                                $type   = pack('N', 1001);
-                                $length = pack('N', strlen($data));
-                                //length+type+body
-                                $packge = $length . $type . $data;
+                                if($tcpIsEnable){
+                                    $type   = pack('N', 1001);
+                                    $length = pack('N', strlen($data));
+                                    //length+type+body
+                                    $packge = $length . $type . $data;
+                                    $res = $client->send($packge);
+                                    var_dump("发送 :{$res} , Code : {$client->errCode}");
+                                    if(empty($res) && $client->errCode !== 0){
+                                        $tcpIsEnable = false;
+                                        file_put_contents('/tmp/php_local_logs/_TcpSendErr',$data);
+                                        //如果不存在定时重连
+                                        if(empty($retryTickId)){
+                                            $retryTickId = Timer::tick($retryTime,function() use(&$client,&$tcpIsEnable,$logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout){
+                                                $client = new Co\Client(SWOOLE_SOCK_TCP);
+                                                if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)){
+                                                    $tcpIsEnable = true;
+                                                }
+                                            });
+                                        }
 
-                                $res = $client->send($packge);
-                                var_dump($packge);
-                                var_dump($res.PHP_EOL);
+                                    }else{
+                                        if($retryTickId){
+                                            $clearRes = Timer::clear($retryTickId);
+                                            if($clearRes){
+                                                $retryTickId = 0;
+                                            }
+                                        }
+                                    }
+                                }else{
+                                    //本地存储
+                                    file_put_contents('/tmp/php_local_logs/_TcpSendErr',$data);
+                                }
                             }
-                        }
-                    });
-
+                        });
+                }
+                $wg->add();
                 Co::create(
-                    function () use ($chan, &$wg,$pipe) {
+                    function () use ($chan, &$wg, $pipe,&$tcpIsEnable) {
                         defer(
                             function () use (&$wg) {
                                 $wg->done();
@@ -82,10 +135,10 @@ class PipeServer extends BaseCommand
                         while ($handle) {
                             $resv = fread($handle, 1024);
                             if (!empty($resv)) {
-                                echo "============================================" . PHP_EOL;
-                                echo "RESVDATA :[  {$resv} ]" . PHP_EOL;
+//                                echo "============================================" . PHP_EOL;
+//                                echo "RESVDATA :[  {$resv} ]" . PHP_EOL;
                                 $resv = $Buffers . $resv;
-                                list($exitBuffer, $buffer) = $this->parseLogData($resv,$chan);
+                                list($exitBuffer, $buffer) = $this->parseLogData($resv, $chan);
                                 if ($exitBuffer) {
                                     $Buffers = $buffer;
                                 }
@@ -93,7 +146,7 @@ class PipeServer extends BaseCommand
                                     $Buffers = "";
                                 }
 //                var_dump("Buffers :[ {$Buffers} ]" . PHP_EOL);
-                                echo "============================================" . PHP_EOL;
+//                                echo "============================================" . PHP_EOL;
                             }
                             else {
                                 Co::sleep(1);
@@ -113,7 +166,7 @@ class PipeServer extends BaseCommand
      * @param $resv
      * @return array
      */
-    public function parseLogData($resv,$chan)
+    public function parseLogData($resv, $chan)
     {
 //        echo "parseLogData  ==>  {$resv}" . PHP_EOL;
         if (strlen($resv) > 8) {
@@ -136,7 +189,7 @@ class PipeServer extends BaseCommand
                     $resv = substr($resv, $length);
                     echo "LOG --> [ {$log} ] " . PHP_EOL;
                     $chan->push($log);
-                    return $this->parseLogData($resv,$chan);
+                    return $this->parseLogData($resv, $chan);
                 }
             }
             return [true, $metaData . $resv];

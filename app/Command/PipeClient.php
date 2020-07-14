@@ -1,6 +1,7 @@
 <?php
 namespace App\Command;
 
+use App\Tool\Bytes;
 use App\Tool\PipeStreamHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -25,10 +26,15 @@ class PipeClient extends BaseCommand
 
     public function handle()
     {
-        $this->logStore("TsetService","test",["user"=>1,time()]);
+        $this->logStore("TsetService","test",["user"=>1,time()],['xxx'=>111]);
     }
-
-    public function logStore($serviceName, $Message, array $Contexts, $LogLevel = Logger::INFO, $Timeout = 50)
+    function decrypt_pass($input, $key = 'df28a957671eab5436e6beeba2515b28')
+    {
+        $iv = '1172130435061718';
+        $decrypted = openssl_decrypt(base64_decode($input), 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+        return $decrypted;
+    }
+    public function logStore($serviceName, $Message, array $Contexts,array $extra=[], $LogLevel = Logger::INFO, $Timeout = 50)
     {
         try {
             if (!isset($this->levelMap[$LogLevel])) {
@@ -65,6 +71,10 @@ class PipeClient extends BaseCommand
                     $logger     = new Logger("{$serviceName}", []);
                     $LogHandler = new PipeStreamHandler($handle, Logger::DEBUG);
                     $logger->pushHandler($LogHandler);
+                    $logger->pushProcessor(function ($record) use($extra){
+                        $record['extra'] = $extra;
+                        return $record;
+                    });
                     $func = $this->levelMap[$LogLevel];
                     $logger->$func($Message, $Contexts);
 //                    var_dump("SUCC=>  ".$Message.PHP_EOL);

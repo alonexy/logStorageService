@@ -50,8 +50,21 @@ class TcpServer extends BaseCommand
 
         $serv->on(
             'receive', function ($serv, $fd, $from_id, $data) {
-            $data = substr($data, 8, -1);
-            echo "{$fd}-{$from_id} -> Receive: {$data}" . PHP_EOL;
+
+            $metaData = unpack("N2",substr($data,0,8));
+            $type = $metaData[2];
+            switch($type){
+                case 1001:
+                    //logdata
+                    $data = substr($data, 8);
+                    echo "{$fd}-{$from_id} -> Receive: {$data}" . PHP_EOL;
+                    break;
+                case 1002:
+                    //heart
+                    $serv->send($fd, 'h');
+                    break;
+            }
+
 //            $serv->send($fd, "Server: " . $data);
         });
 
