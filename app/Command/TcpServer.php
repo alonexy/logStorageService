@@ -29,6 +29,8 @@ class TcpServer extends BaseCommand
                 'package_length_offset' => 0, //第N个字节是包长度的值
                 'package_body_offset' => 8, //第几个字节开始计算长度
                 'package_max_length' => 1024 * 20, //协议最大长度
+                'heartbeat_idle_time' => 60, // 表示一个连接如果*秒内未向服务器发送任何数据，此连接将被强制关闭
+                'heartbeat_check_interval' => 5,  // 表示每*秒遍历一次
             ));
         $serv->on(
             'start', function ($server) {
@@ -51,9 +53,9 @@ class TcpServer extends BaseCommand
         $serv->on(
             'receive', function ($serv, $fd, $from_id, $data) {
 
-            $metaData = unpack("N2",substr($data,0,8));
-            $type = $metaData[2];
-            switch($type){
+            $metaData = unpack("N2", substr($data, 0, 8));
+            $type     = $metaData[2];
+            switch ($type) {
                 case 1001:
                     //logdata
                     $data = substr($data, 8);
@@ -61,7 +63,6 @@ class TcpServer extends BaseCommand
                     break;
                 case 1002:
                     //heart
-                    $serv->send($fd, 'h');
                     break;
             }
 

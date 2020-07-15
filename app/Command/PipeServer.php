@@ -41,19 +41,20 @@ class PipeServer extends BaseCommand
                 $logServerTcpTimeout = 10;
                 $wg                  = new \Swoole\Coroutine\WaitGroup();
 
-                $chan   = new Channel(100);
+                $chan = new Channel(100);
 
                 $tcpIsEnable = false;
                 $retryTickId = 0;
-                $retryTime = 5000;
+                $retryTime   = 5000;
 
                 $client = new Co\Client(SWOOLE_SOCK_TCP);
                 if (!$client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)) {
                     echo "connect failed. Error: {$client->errCode}" . PHP_EOL;
-                    if(empty($retryTickId)){
-                        $retryTickId = Timer::tick($retryTime,function() use(&$client,&$tcpIsEnable,$logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout){
+                    if (empty($retryTickId)) {
+                        $retryTickId = Timer::tick(
+                            $retryTime, function () use (&$client, &$tcpIsEnable, $logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
                             $client = new Co\Client(SWOOLE_SOCK_TCP);
-                            if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)){
+                            if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)) {
                                 $tcpIsEnable = true;
                             }
                         });
@@ -63,21 +64,43 @@ class PipeServer extends BaseCommand
                     $tcpIsEnable = true;
                     //打开链接成功 开启心跳
                     Timer::tick(
-                        7000, function () use (&$client,&$tcpIsEnable) {
-                        if($tcpIsEnable){
+                        7000, function () use (&$client, &$tcpIsEnable, &$retryTickId, $retryTime, $logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
+                        if ($tcpIsEnable) {
                             $heartData = "heart";
                             $type      = pack('N', 1002);
                             $length    = pack('N', strlen($heartData));
                             //length+type+body
                             $packge = $length . $type . $heartData;
-                            $client->send($packge);
+                            $res    = $client->send($packge);
+                            if (empty($res) && $client->errCode !== 0) {
+                                $tcpIsEnable = false;
+                                // 如果不存在定时重连
+                                # fixme 优化重连机制
+                                if (empty($retryTickId)) {
+                                    $retryTickId = Timer::tick(
+                                        $retryTime, function () use (&$client, &$tcpIsEnable, $logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
+                                        $client = new Co\Client(SWOOLE_SOCK_TCP);
+                                        if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)) {
+                                            $tcpIsEnable = true;
+                                        }
+                                    });
+                                }
+                            }
+                            else {
+                                if ($retryTickId) {
+                                    $clearRes = Timer::clear($retryTickId);
+                                    if ($clearRes) {
+                                        $retryTickId = 0;
+                                    }
+                                }
+                            }
                         }
                     });
                 }
                 for ($i = 0; $i < 10; $i++) {
                     $wg->add();
                     Co::create(
-                        function () use ($chan, &$wg, &$client,&$tcpIsEnable,&$retryTickId,$retryTime,$logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
+                        function () use ($chan, &$wg, &$client, &$tcpIsEnable, &$retryTickId, $retryTime, $logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
                             defer(
                                 function () use (&$wg) {
                                     $wg->done();
@@ -88,44 +111,48 @@ class PipeServer extends BaseCommand
                                 if (empty($data)) {
                                     Co::sleep(1);
                                 }
-                                if($tcpIsEnable){
+                                if ($tcpIsEnable) {
                                     $type   = pack('N', 1001);
                                     $length = pack('N', strlen($data));
                                     //length+type+body
                                     $packge = $length . $type . $data;
-                                    $res = $client->send($packge);
+                                    $res    = $client->send($packge);
                                     var_dump("发送 :{$res} , Code : {$client->errCode}");
-                                    if(empty($res) && $client->errCode !== 0){
+                                    if (empty($res) && $client->errCode !== 0) {
                                         $tcpIsEnable = false;
-                                        file_put_contents('/tmp/php_local_logs/_TcpSendErr',$data);
-                                        //如果不存在定时重连
-                                        if(empty($retryTickId)){
-                                            $retryTickId = Timer::tick($retryTime,function() use(&$client,&$tcpIsEnable,$logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout){
+                                        file_put_contents('/tmp/php_local_logs/_TcpSendErr', $data);
+                                        // 如果不存在定时重连
+                                        # fixme 优化重连机制
+                                        if (empty($retryTickId)) {
+                                            $retryTickId = Timer::tick(
+                                                $retryTime, function () use (&$client, &$tcpIsEnable, $logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout) {
                                                 $client = new Co\Client(SWOOLE_SOCK_TCP);
-                                                if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)){
+                                                if ($client->connect($logServerTcpHost, $logServerTcpPort, $logServerTcpTimeout)) {
                                                     $tcpIsEnable = true;
                                                 }
                                             });
                                         }
 
-                                    }else{
-                                        if($retryTickId){
+                                    }
+                                    else {
+                                        if ($retryTickId) {
                                             $clearRes = Timer::clear($retryTickId);
-                                            if($clearRes){
+                                            if ($clearRes) {
                                                 $retryTickId = 0;
                                             }
                                         }
                                     }
-                                }else{
+                                }
+                                else {
                                     //本地存储
-                                    file_put_contents('/tmp/php_local_logs/_TcpSendErr',$data);
+                                    file_put_contents('/tmp/php_local_logs/_TcpSendErr', $data);
                                 }
                             }
                         });
                 }
                 $wg->add();
                 Co::create(
-                    function () use ($chan, &$wg, $pipe,&$tcpIsEnable) {
+                    function () use ($chan, &$wg, $pipe, &$tcpIsEnable) {
                         defer(
                             function () use (&$wg) {
                                 $wg->done();
