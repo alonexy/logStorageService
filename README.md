@@ -4,11 +4,31 @@
 - PipeStreamHandler 基于 Monolog 格式
 
 
-###  操作命令
+###  php bin/console list
 ```
-php bin/console tcp:server  #  打开tcpServer
-php bin/console pipe:server #  打开 pipeServer 和TcpClient
-php bin/console pipe:client #  输出日志
+LogStorageService 1.0.1
+
+Usage:
+  command [options] [arguments]
+
+Options:
+  -h, --help            Display this help message
+  -q, --quiet           Do not output any message
+  -V, --version         Display this application version
+      --ansi            Force ANSI output
+      --no-ansi         Disable ANSI output
+  -n, --no-interaction  Do not ask any interactive question
+  -v|vv|vvv, --verbose  Increase the verbosity of messages: 1 for normal output, 2 for more verbose output and 3 for debug
+
+Available commands:
+  help                        Displays help for a command
+  list                        Lists commands
+ create
+  create:command              快速创建命令
+ example
+  example:pipe_local_log_out  例子: 输出日志到管道
+  example:pipe_local_server   例子: 本地的管道Server 转发到对应的TCP Serevr
+  example:tcp_server          例子: 接收Client的log 打印到终端
 ```
 
 - 文件解释

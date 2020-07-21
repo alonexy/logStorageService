@@ -1,20 +1,20 @@
 <?php
-namespace App\Command;
+namespace App\Command\Examples;
 
+use App\Command\BaseCommand;
 use Co\Channel;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
 use Swoole\Timer;
 use Swoole\Coroutine as Co;
 
 class PipeServer extends BaseCommand
 {
 
-    public $commandName = 'pipe:server';
-    public $commandDesc = 'DESC';
+    public $commandName = 'example:pipe_local_server';
+    public $commandDesc = '例子: 本地的管道Server 转发到对应的TCP Serevr';
 
     public function handle()
     {
+
         $pipe       = "/tmp/phplog_pipe";
         $pipeActive = "/tmp/phplog_active_time";
         $mode       = 0666;
@@ -160,6 +160,13 @@ class PipeServer extends BaseCommand
                         $handle  = fopen($pipe, "r");
                         $Buffers = "";
                         while ($handle) {
+                            $reders  = [$handle];
+                            $writers = null;
+                            $except  = null;
+                            if (stream_select($reders, $writers, $except, 0, 15) < 1) {
+                                Co::sleep(1);
+                                continue;
+                            }
                             $resv = fread($handle, 1024);
                             if (!empty($resv)) {
 //                                echo "============================================" . PHP_EOL;

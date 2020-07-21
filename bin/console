@@ -7,13 +7,14 @@ $dotenv = new Dotenv\Dotenv(__DIR__.'/../');
 $dotenv->load();
 
 $app = new Application();
+$app->setName("LogStorageService");
+$app->setVersion('1.0.1');
 #TIP 命令项
 $commands = [
     \App\Command\CreateCommand::class,
-    \App\Command\Client::class,
-    \App\Command\TcpServer::class,
-    \App\Command\PipeServer::class,
-    \App\Command\PipeClient::class,
+    \App\Command\Examples\TcpServer::class,
+    \App\Command\Examples\PipeServer::class,
+    \App\Command\Examples\PipeClient::class,
 ];
 foreach($commands as $command){
     $app->add(new $command);

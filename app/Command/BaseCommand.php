@@ -87,7 +87,7 @@ class BaseCommand extends Command
         }
         $this->input  = $input;
         $this->output = $output;
-        return $this->handle();
+        return $this->handle()??0;
     }
 
     /**

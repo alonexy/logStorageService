@@ -1,21 +1,15 @@
 <?php
-namespace App\Command;
+namespace App\Command\Examples;
 
-use Predis\Client;
+use App\Command\BaseCommand;
 use Swoole\Coroutine as Co;
 use Swoole\Timer;
 
-/**
- * Created by PhpStorm.
- * User: alonexy
- * Date: 20/7/2
- * Time: 17:12
- */
 class TcpServer extends BaseCommand
 {
 
-    public $commandName = 'tcp:server';
-    public $commandDesc = 'tcp log Server ';
+    public $commandName = 'example:tcp_server';
+    public $commandDesc = '例子: 接收Client的log 打印到终端';
 
 
     public function handle()
