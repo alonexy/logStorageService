@@ -13,7 +13,7 @@ $app->setVersion('1.0.1');
 $commands = [
     \App\Command\CreateCommand::class,
     \App\Command\Examples\TcpServer::class,
-    \App\Command\Examples\PipeServer::class,
+    \App\Command\Examples\PipeTcpServer::class,
     \App\Command\Examples\PipeClient::class,
 ];
 foreach($commands as $command){

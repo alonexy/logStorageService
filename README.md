@@ -69,7 +69,9 @@ Available commands:
 - 优化重连机制
 - 优化解析数据失败处理
 - 优化socket Server 断开后数据短时间内的发包导致的数据丢失问题
-
+- Tcp Server 数据过滤器
+- 通知Service
+- 多存储模式
 ```
 
 

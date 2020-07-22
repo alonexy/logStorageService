@@ -1,5 +1,5 @@
 {
-  "name": "alonexy/cli-command",
+  "name": "alonexy/log_store",
   "type": "project",
   "authors": [
     {
@@ -25,5 +25,8 @@
   "require-dev": {
     "symfony/console": "^5.1",
     "symfony/var-dumper": "^5.1"
+  },
+  "scripts": {
+    "cs-fix": "php-cs-fixer fix $1"
   }
 }
