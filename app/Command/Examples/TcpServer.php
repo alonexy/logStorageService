@@ -21,6 +21,7 @@ class TcpServer extends BaseCommand
 
     public function handle()
     {
+        Co::set(['hook_flags' => SWOOLE_HOOK_ALL]);
         $daemonize = $this->option('d');
         stream_filter_register('crisis_filter', CrisisFilter::class);
         $serv = new \Swoole\Server('127.0.0.1', 9880, SWOOLE_PROCESS, SWOOLE_SOCK_TCP);

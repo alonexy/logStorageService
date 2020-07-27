@@ -22,7 +22,7 @@ class PipeTcpServer extends BaseCommand
 
     public function handle()
     {
-        Co::set(['hook_flags' => SWOOLE_HOOK_FILE]);
+        Co::set(['hook_flags' => SWOOLE_HOOK_ALL]);
         $pipe       = '/tmp/phplog_pipe';
         $pipeActive = '/tmp/phplog_active_time';
         $mode       = 0666;
