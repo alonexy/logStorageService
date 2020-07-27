@@ -20,7 +20,10 @@
     "psr-4": {
       "App\\": "app/",
       "App\\Command\\Examples\\":"app/Command/Examples/"
-    }
+    },
+    "files": [
+      "app/functions.php"
+    ]
   },
   "require-dev": {
     "symfony/console": "^5.1",

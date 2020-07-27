@@ -1,14 +1,17 @@
 #!/usr/bin/env php
 <?php
-require __DIR__.'/../vendor/autoload.php';
+require __DIR__ . '/../vendor/autoload.php';
 use Symfony\Component\Console\Application;
+
 date_default_timezone_set('PRC');
-$dotenv = new Dotenv\Dotenv(__DIR__.'/../');
+define("CONFIG_PATH", __DIR__ . "/../app/config/");
+$dotenv = new Dotenv\Dotenv(__DIR__ . '/../');
 $dotenv->load();
 
 $app = new Application();
 $app->setName("LogStorageService");
 $app->setVersion('1.0.1');
+
 #TIP 命令项
 $commands = [
     \App\Command\CreateCommand::class,
@@ -16,7 +19,7 @@ $commands = [
     \App\Command\Examples\PipeTcpServer::class,
     \App\Command\Examples\PipeClient::class,
 ];
-foreach($commands as $command){
+foreach ($commands as $command) {
     $app->add(new $command);
 }
 

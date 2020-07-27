@@ -15,24 +15,29 @@ use Swoole\Coroutine as Co;
 
 class TcpServer extends BaseCommand
 {
-    public $commandName = 'example:tcp_server';
+    public $commandName = 'example:tcp_server {--d : 是否以守护进程模式启动}';
 
     public $commandDesc = '例子: 接收Client的log 打印到终端';
 
     public function handle()
     {
+        $daemonize = $this->option('d');
         stream_filter_register('crisis_filter', CrisisFilter::class);
         $serv = new \Swoole\Server('127.0.0.1', 9880, SWOOLE_PROCESS, SWOOLE_SOCK_TCP);
         $serv->set(
             [
                 'worker_num' => 4,
+                'dispatch_mode' => 2,
                 'open_length_check' => true,
                 'package_length_type' => 'N',
                 'package_length_offset' => 0, //第N个字节是包长度的值
                 'package_body_offset' => 8, //第几个字节开始计算长度
                 'package_max_length' => 1024 * 20, //协议最大长度
                 'heartbeat_idle_time' => 60, // 表示一个连接如果*秒内未向服务器发送任何数据，此连接将被强制关闭
-                'heartbeat_check_interval' => 5,  // 表示每*秒遍历一次
+                'heartbeat_check_interval' => 10,  // 表示每*秒遍历一次
+                'reload_async'=>true,
+                'max_wait_time'=>10,
+                'daemonize'=>$daemonize,
             ]
         );
         $serv->on('start', [$this, 'onStart']);
@@ -46,6 +51,7 @@ class TcpServer extends BaseCommand
 
     public function onStart($server)
     {
+        dump("Master Start PID: {$server->master_pid} ");
     }
 
     public function onManagerStart($server)
@@ -93,6 +99,8 @@ class TcpServer extends BaseCommand
                 break;
             case 1002:
                 //heart
+                $data = substr($data, 8);
+                echo "{$fd}-{$from_id} -> Receive Heart: {$data}" . PHP_EOL;
                 break;
         }
     }
